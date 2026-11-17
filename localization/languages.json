@@ -1,0 +1,9 @@
+{
+	"_comment": "To add a language: add an entry here and create <code>.json with the same keys as en.json.",
+	"default": "fa_AF",
+	"languages": [
+		{ "code": "fa_AF", "name": "دری", "rtl": true },
+		{ "code": "ps", "name": "پښتو", "rtl": true },
+		{ "code": "en", "name": "English", "rtl": false }
+	]
+}
