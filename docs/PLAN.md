@@ -19,8 +19,11 @@ Afghan women inside Afghanistan and abroad. Some may be in restrictive or unsafe
 - Generic name and icon: **"Garden" / «باغ من» / «زما باغ»** with a leaf icon *(done; shown in the browser tab and on the title screen)*.
 - Search engines are told not to index the web build (`noindex`) *(done)*.
 - Data stays on the device: no server, no accounts, no analytics *(done)*.
-- Works offline once loaded; full offline install via a service worker *(Phase 3)*.
-- Simple PIN *(Phase 3)*.
+- Works fully offline from the first visit (service worker caches the whole game) *(done)*.
+- Installable as "Garden" with a leaf icon *(done)*.
+- Optional 4-digit PIN, salted hash only; auto-lock when the app is backgrounded *(done)*.
+- Quick-hide leaf button / Esc → neutral "Garden notes" cover screen *(done)*.
+- Forgot PIN → start over (erases the world) *(done)*.
 
 ## 6. Languages
 Dari (default) · Pashto · English. They're modular, so adding a language means adding a JSON file. **The Dari and Pashto text needs native-speaker review.**
@@ -38,8 +41,8 @@ Customisable avatar · explorable dream world · home exterior and interior · g
 |---|---|---|
 | 0: Setup & skeleton | Project, folders, modular localisation (fa_AF/ps/en), RTL | ✅ Done |
 | 1: One location end-to-end in browser | Avatar, home exterior + interior, movement (tap + keys), local save/load on PWA-friendly storage, web export | ✅ Done |
-| 2: Expand the world | Garden ✅ · workplace plot with 6 choices, each enterable ✅ · more places (school/university campus, city street, mountains?) ⬜ | 🟡 Started |
-| 3: Privacy & discretion | PWA manifest + icon + "Add to Home Screen", service-worker offline cache, simple PIN, quick-hide | ⬜ |
+| 2: Expand the world | Garden ✅ · workplace plot with 6 choices, each enterable ✅ · town with market and fountain ✅ · university ✅ · library ✅ · mountain view with river ✅ · placing her own items ⬜ | 🟡 Mostly done |
+| 3: Privacy & discretion | PWA manifest + icons + "Add to Home Screen" ✅ · offline from first visit ✅ · PIN ✅ · auto-lock ✅ · quick-hide cover screen ✅ | ✅ Done |
 | 4: Polish & real-world testing | Share link, gather feedback, iterate; real art when funded | ⬜ |
 
 ## 10. Decisions log
@@ -54,10 +57,16 @@ Customisable avatar · explorable dream world · home exterior and interior · g
 9. *(Session 2)* Mobile-first base resolution 480×600 that stretches to fit; works in portrait and landscape.
 10. *(Session 2)* Font: Vazirmatn (open licence), covering Dari, Pashto and Latin, because web builds can't use system fonts.
 
+11. *(Session 3)* New places: town (market, fountain) → university and library interiors; mountain view with a river and bridge. Reached through garden-style gates.
+12. *(Session 3)* PIN: optional, 4 digits, salted SHA-256 in the local save, no lockout after wrong tries (avoids locking people out); "Forgot PIN" = start over.
+13. *(Session 3)* Quick-hide shows neutral gardening tips that match the "Garden" cover name; tapping its leaf returns (through the PIN if set).
+14. *(Session 3)* Offline: Godot's service worker patched to cache the whole game on first visit (~45 MB).
+
 ## 11. Open questions
 - Who can review the Dari and Pashto text?
 - Should she be able to place and move items herself (trees, furniture) in Phase 2, or keep the world pre-arranged for now?
 - What should the next Phase 2 places be (e.g. university, city street, mountains or the countryside)?
 - Hosting for test links: itch.io (restricted page) or Netlify?
-- PIN behaviour: what happens after a forgotten PIN, given that there's no account to recover with?
-- Should there be a quick-hide gesture or button that instantly shows a neutral screen?
+- Should the saved world be encrypted with the PIN (stronger protection, but a forgotten PIN then loses everything for certain)?
+- Is ~45 MB first download acceptable on users' data plans? (Godot's engine is most of it; a smaller custom engine build is possible later.)
+- Should quick-hide also trigger from a gesture (e.g. shaking the phone, or a two-finger tap)?

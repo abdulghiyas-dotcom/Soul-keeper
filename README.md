@@ -10,7 +10,7 @@ Built with **Godot 4.4.1** (free, open-source). It runs in a web browser now and
 
 ---
 
-## What works today (Phase 0 + Phase 1, plus the start of Phase 2)
+## What works today (Phases 0–3, with Phase 2 well under way)
 
 | Feature | Status |
 |---|---|
@@ -24,11 +24,22 @@ Built with **Godot 4.4.1** (free, open-source). It runs in a web browser now and
 | Enter the workplace (each type has its own furnished interior) | ✅ |
 | Saves automatically on the device only (browser storage, works offline). Nothing is sent anywhere | ✅ |
 | Phone-sized layout (portrait and landscape) | ✅ |
+| **Town** through the garden gate: market stalls, fountain, a **university** and a **library** she can walk into | ✅ |
+| **Mountain view**: snowy peaks, a river with a bridge, wildflowers and a quiet lookout bench | ✅ |
+| **Optional 4-digit PIN** (Menu → Privacy). Stored only as a salted hash on the device | ✅ |
+| **Auto-lock** whenever the app goes to the background (switching apps, locking the phone, changing tabs) | ✅ |
+| **Quick-hide**: the leaf button (or Esc) instantly shows neutral "Garden notes" gardening tips. Tap the leaf there to come back (PIN asked if set) | ✅ |
+| **Forgot PIN**: the only way back in is to start over, which erases the world, so nobody can bypass the PIN | ✅ |
+| **Installable app** ("Add to Home Screen"), named only "Garden" with a leaf icon, opening full-screen | ✅ |
+| **Works fully offline** after the first visit: the whole game is cached on the device | ✅ |
 
 ![The six workplace interiors](docs/screenshots/workplaces.png)
 ![Phone layout in English](docs/screenshots/phone.png)
 
-**Not built yet (by design):** PIN lock, "Add to Home Screen" / offline install (PWA), goals, journaling, AI guide. See [docs/PLAN.md](docs/PLAN.md).
+![Town, university, library and mountain view](docs/screenshots/places.png)
+![PIN pad, garden-notes cover screen, lock screen](docs/screenshots/privacy.png)
+
+**Not built yet (by design):** goals, journaling, AI guide. See [docs/PLAN.md](docs/PLAN.md).
 
 ---
 
@@ -46,6 +57,9 @@ Built with **Godot 4.4.1** (free, open-source). It runs in a web browser now and
 
 Every push to `main` also builds the web version on GitHub (**Actions** tab → latest run → **web-build** download).
 
+### Installing on a phone
+Open the link in the phone's browser, then choose **Add to Home Screen** (Android: browser menu ⋮; iPhone: Share → Add to Home Screen). It appears as **Garden** with a leaf icon and works without internet afterwards. The install and offline features only work over **https** (itch.io and Netlify both provide it) or on `localhost`.
+
 ### Sharing a test link privately
 GitHub Pages needs a public repository on the free plan, so for private testing use either:
 - **itch.io**: upload the zipped `build/web` folder as an HTML game, set it to *Restricted* or password-protected. It's free and needs no server.
@@ -61,9 +75,11 @@ autoload/              Always-running helpers
   i18n.gd              Loads languages from localization/, switches RTL/LTR
   save_manager.gd      Local-only save (user:// = browser IndexedDB on web), with a backup copy
   game_state.gd        The user's world as plain data; save-version migration
+  privacy.gd           PIN (salted hash), auto-lock when the app is hidden
 localization/          languages.json + one <code>.json per language (KEY → text)
 scenes/main.tscn/.gd   Switches between title, avatar creator, world
 screens/               Title screen, avatar creator, world screen (HUD, menu, workplace picker)
+ui/                    PIN pad, PIN setup, lock and cover screens (privacy_layer.gd), leaf button
 scripts/
   iso.gd               Isometric grid ↔ screen math
   iso_draw.gd          Placeholder art primitives (boxes, faces, ellipses)
@@ -75,16 +91,23 @@ scripts/
   player.gd            Movement, collision, tap-to-walk
   ui.gd                Shared menu style
 assets/fonts/          Vazirmatn (covers Dari, Pashto and Latin; SIL Open Font License)
-tools/                 export_web.sh, build_theme.gd
+assets/icons/          App icons for "Add to Home Screen" (generated from icon.svg)
+tools/                 export_web.sh (build + offline patch), build_theme.gd, build_icons.gd
 ```
 
 ### Common changes
 - **Add a language:** add an entry in `localization/languages.json` and create `<code>.json` with the same keys as `en.json`. No code changes.
 - **Fix a translation:** edit the `.json` file. *Dari and Pashto texts were written by an AI and need review by native speakers before launch, especially Pashto.*
 - **Add furniture:** add an entry to `PRESETS` in `scripts/furniture.gd`, then place it in a room in `scripts/world_data.gd`.
+- **Add a new place:** write a builder function in `world_data.gd` (copy `_hills()` or `_library()`), add it to `build()` and `PLACE_LABELS`, add a door to it from an existing place, and add a `PLACE_…` key to each language file.
 - **Add a workplace type:** add it to `CAREERS` in `world_data.gd`, add its furniture in `_career()`, and add a `CAREER_…` key to each language file.
 - **Swap in real art later:** only `iso_draw.gd`, `iso_object.gd`, `iso_ground.gd` and `avatar.gd` draw things. Replace their drawing with sprites; the data, saving and movement don't change.
 - **Change menu styling:** edit `scripts/ui.gd`, then run `godot --headless --script res://tools/build_theme.gd` to regenerate `assets/theme.tres`.
+
+### Privacy notes
+- The PIN keeps out someone who picks up an unlocked phone. It is **not encryption**: someone with technical skills and the device could still read the saved world. Encrypting the save is a possible later step.
+- Auto-lock and quick-hide pause the world underneath, so nothing moves or saves while covered.
+- The web page tells search engines not to index it. The app makes no network requests after loading.
 
 ### Save data
 Saved as JSON at `user://world.json` (plus `world.backup.json`). In the browser this lives in IndexedDB for that site. The app asks the browser to keep it permanently (`navigator.storage.persist()`). When the save format changes, raise `SAVE_VERSION` in `game_state.gd` so old worlds still load.

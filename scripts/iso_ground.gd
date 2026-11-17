@@ -12,6 +12,9 @@ func _draw() -> void:
 	var o := Vector2.ZERO
 	var outdoor: bool = d.get("outdoor", true)
 
+	if d.get("mountains", false):
+		_mountains(size)
+
 	# island / floor thickness
 	var side := Palette.EARTH if outdoor else Color("#6b5240")
 	IsoDraw.quad(self, IsoDraw.pt(o, 0, size.y, 0), IsoDraw.pt(o, size.x, size.y, 0),
@@ -62,6 +65,42 @@ func _decal(dec: Dictionary) -> void:
 			IsoDraw.diamond(self, o, p + Vector2(0.4, 0.4), s - Vector2(0.8, 0.8), c)
 		"mat":
 			IsoDraw.diamond(self, o, p, s, Color("#9e7a5a"))
+		"river":
+			IsoDraw.diamond(self, o, p, s, Color("#7fb3c7"))
+			IsoDraw.diamond(self, o, p + Vector2(0.15, 0), s - Vector2(0.3, 0), Palette.WATER)
+			for i in int(s.y):
+				var q := IsoDraw.pt(o, p.x + 0.5 + (i % 2) * 0.8, p.y + i + 0.5)
+				draw_line(q - Vector2(6, 0), q + Vector2(6, 0), Color(1, 1, 1, 0.5), 1.5, true)
+		"bridge":
+			var wood := Color("#b08560")
+			IsoDraw.box(self, o, p, s, 6, wood)
+			for i in int(s.x * 4):
+				var x := p.x + 0.12 + i * 0.25
+				draw_line(IsoDraw.pt(o, x, p.y, 6), IsoDraw.pt(o, x, p.y + s.y, 6), wood.darkened(0.2), 1.0, true)
+			IsoDraw.box(self, o, p, Vector2(s.x, 0.08), 18, wood.darkened(0.15), 6)
+			IsoDraw.box(self, o, p + Vector2(0, s.y - 0.08), Vector2(s.x, 0.08), 18, wood.darkened(0.15), 6)
+		"picnic":
+			IsoDraw.diamond(self, o, p, s, Color("#e8d2a8"))
+			IsoDraw.diamond(self, o, p + Vector2(0.15, 0.15), s - Vector2(0.3, 0.3), Color("#d98b8b"))
+
+
+## Far-away mountains behind the island: the hopeful horizon.
+func _mountains(size: Vector2i) -> void:
+	var left := Iso.to_screen(Vector2(0, size.y)).x - 160
+	var right := Iso.to_screen(Vector2(size.x, 0)).x + 160
+	var base := Iso.to_screen(Vector2(size.x, size.y)).y * 0.5
+	var far := [[0.05, 300], [0.22, 380], [0.42, 330], [0.6, 420], [0.8, 340], [0.95, 300]]
+	var near := [[0.12, 220], [0.32, 260], [0.52, 200], [0.72, 250], [0.9, 210]]
+	for layer in [[far, Color("#b4c3d4"), 170.0], [near, Color("#9db5a7"), 150.0]]:
+		for m in layer[0]:
+			var x := lerpf(left, right, m[0])
+			var top := Vector2(x, base - m[1])
+			var w: float = layer[2]
+			draw_colored_polygon(PackedVector2Array([Vector2(x - w, base), top, Vector2(x + w, base)]), layer[1])
+			if layer[0] == far:
+				var k := 0.22
+				draw_colored_polygon(PackedVector2Array([top, top.lerp(Vector2(x + w, base), k),
+					top.lerp(Vector2(x, base), k * 0.8), top.lerp(Vector2(x - w, base), k)]), Color("#f4f6f8"))
 
 
 func _walls(w: Dictionary, size: Vector2i) -> void:

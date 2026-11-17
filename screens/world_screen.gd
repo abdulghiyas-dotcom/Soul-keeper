@@ -4,6 +4,7 @@ extends Node
 ## and the small on-screen interface (menu, place name, hints).
 
 signal exit_requested
+signal hide_requested
 
 const AUTOSAVE_SECONDS := 8.0
 
@@ -100,6 +101,10 @@ func _on_tile(t: Vector2i) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):  # Esc = hide instantly
+		hide_requested.emit()
+		get_viewport().set_input_as_handled()
+		return
 	if _busy or player == null or player.frozen:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -148,6 +153,13 @@ func _build_hud() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(spacer)
+	var hide_btn := LeafButton.new()
+	hide_btn.pressed.connect(func() -> void: hide_requested.emit())
+	bar.add_child(hide_btn)
+	var gap := Control.new()
+	gap.custom_minimum_size.x = 8
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(gap)
 	bar.add_child(UI.button("MENU", _open_menu, 110))
 
 	_toast = UI.label("", 20)
@@ -220,6 +232,9 @@ func _open_menu() -> void:
 	box.add_child(UI.button("CHOOSE_WORKPLACE", func() -> void:
 		_close_overlay()
 		_open_career_picker()))
+	box.add_child(UI.button("PRIVACY", func() -> void:
+		_close_overlay()
+		_open_privacy()))
 	var langs := HBoxContainer.new()
 	langs.alignment = BoxContainer.ALIGNMENT_CENTER
 	langs.add_theme_constant_override("separation", 8)
@@ -236,6 +251,32 @@ func _open_menu() -> void:
 		_save()
 		exit_requested.emit()))
 	box.add_child(UI.button("CLOSE", _close_overlay))
+
+
+func _open_privacy() -> void:
+	var o := _overlay()
+	var box := UI.center_panel(o, 380)
+	box.add_child(UI.label("PRIVACY", 28))
+	box.add_child(UI.label("PIN_INFO", 19))
+	var has := Privacy.has_pin()
+	box.add_child(UI.button("CHANGE_PIN" if has else "SET_PIN", func() -> void:
+		_open_pin_setup(PinSetup.Mode.SET)))
+	if has:
+		box.add_child(UI.button("REMOVE_PIN", func() -> void:
+			_open_pin_setup(PinSetup.Mode.REMOVE)))
+	box.add_child(UI.button("CLOSE", _close_overlay))
+
+
+func _open_pin_setup(mode: PinSetup.Mode) -> void:
+	var o := _overlay()
+	var box := UI.center_panel(o, 360)
+	var setup := PinSetup.new()
+	setup.mode = mode
+	box.add_child(setup)
+	setup.finished.connect(func(msg: String) -> void:
+		_close_overlay()
+		if msg != "":
+			_show_toast(msg))
 
 
 func _open_avatar_editor() -> void:

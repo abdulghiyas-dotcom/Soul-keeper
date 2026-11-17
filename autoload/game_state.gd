@@ -26,6 +26,7 @@ static func default_data() -> Dictionary:
 		"home": {"wall": 0, "roof": 0},
 		"career": "",  # "" until she chooses; see WorldData.CAREERS
 		"location": {"scene": "exterior", "x": -1.0, "y": -1.0},
+		"security": {"salt": "", "pin_hash": ""},
 	}
 
 
@@ -34,6 +35,7 @@ func has_world() -> bool:
 
 
 func reset() -> void:
+	# Starting over also removes the PIN (this is the "forgot PIN" path).
 	var lang = data.get("language", "")
 	data = default_data()
 	data.language = lang

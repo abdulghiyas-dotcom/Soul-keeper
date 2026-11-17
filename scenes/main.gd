@@ -2,10 +2,16 @@ extends Node
 ## Switches between the three screens: title, avatar creator, world.
 
 var _current: Node
+var _privacy: PrivacyLayer
 
 
 func _ready() -> void:
+	_privacy = PrivacyLayer.new()
+	add_child(_privacy)
+	_privacy.started_over.connect(_new_world)
 	_show_title()
+	if Privacy.has_pin() and GameState.has_world():
+		_privacy.lock()
 
 
 func _switch(n: Node) -> void:
@@ -35,4 +41,5 @@ func _new_world() -> void:
 func _show_world() -> void:
 	var w := WorldScreen.new()
 	w.exit_requested.connect(_show_title)
+	w.hide_requested.connect(_privacy.hide_now)
 	_switch(w)

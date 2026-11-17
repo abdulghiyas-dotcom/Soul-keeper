@@ -82,8 +82,8 @@ class Backdrop extends Control:
 		var bottom := Color("#d9dbef")
 		draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(s.x, 0), s, Vector2(0, s.y)]),
 			PackedColorArray([top, top, bottom, bottom]))
-		draw_circle(Vector2(s.x * 0.78, s.y * 0.26), 60, Color(1, 0.93, 0.75, 0.6), true, -1.0, true)
-		draw_circle(Vector2(s.x * 0.78, s.y * 0.26), 38, Color("#fde7b0"), true, -1.0, true)
+		draw_circle(Vector2(s.x * 0.82, s.y * 0.12), 52, Color(1, 0.93, 0.75, 0.6), true, -1.0, true)
+		draw_circle(Vector2(s.x * 0.82, s.y * 0.12), 32, Color("#fde7b0"), true, -1.0, true)
 		IsoDraw.ellipse(self, Vector2(s.x * 0.2, s.y * 1.02), s.x * 0.55, s.y * 0.28, Color("#b9d3b2"), 48)
 		IsoDraw.ellipse(self, Vector2(s.x * 0.85, s.y * 1.06), s.x * 0.6, s.y * 0.26, Color("#a7c9a0"), 48)
 

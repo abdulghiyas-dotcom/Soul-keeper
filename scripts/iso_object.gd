@@ -38,6 +38,11 @@ func _draw() -> void:
 		"sign": _sign(o)
 		"easel": _easel(o)
 		"mannequin": _mannequin(o)
+		"arch": _arch(o)
+		"fountain": _fountain(o)
+		"stall": _stall(o)
+		"rock": _rock()
+		"globe": _globe(o)
 		var kind:
 			if Furniture.has(kind):
 				Furniture.draw(self, o, kind, gpos, spec)
@@ -146,7 +151,7 @@ func _building(o: Vector2) -> void:
 	var wall := col.lightened(0.62)
 	var x1 := gpos.x + gsize.x
 	var y1 := gpos.y + gsize.y
-	var h := 78.0
+	var h: float = spec.get("height", 78.0)
 	IsoDraw.box(self, o, gpos, gsize, h, wall)
 	IsoDraw.box(self, o, gpos - Vector2(0.12, 0.12), gsize + Vector2(0.24, 0.24), 8, col.darkened(0.1), h)
 	var dx: float = spec.door.x
@@ -158,6 +163,9 @@ func _building(o: Vector2) -> void:
 	# door
 	IsoDraw.face_y(self, o, y1, dx + 0.1, dx + 0.9, 0, 46, col.darkened(0.35))
 	IsoDraw.face_y(self, o, y1, dx + 0.18, dx + 0.82, 4, 42, Color("#cfe6ee"))
+	if spec.get("columns", false):
+		_columns(o, col, h)
+		return
 	# striped awning above the door
 	for i in 4:
 		var a := dx - 0.1 + i * 0.3
@@ -168,9 +176,36 @@ func _building(o: Vector2) -> void:
 	IsoDraw.face_y(self, o, y1, gpos.x + 0.6, x1 - 0.6, 62, 76, Color("#fbf6ec"))
 	var em := IsoDraw.pt(o, (gpos.x + x1) * 0.5, y1, 69)
 	draw_circle(em, 6, col, true, -1.0, true)
-	if spec.get("career", "") == "clinic":
-		draw_rect(Rect2(em - Vector2(1.5, 4.5), Vector2(3, 9)), Color.WHITE)
-		draw_rect(Rect2(em - Vector2(4.5, 1.5), Vector2(9, 3)), Color.WHITE)
+	_emblem(em, str(spec.get("emblem", spec.get("career", ""))))
+
+
+func _emblem(em: Vector2, kind: String) -> void:
+	match kind:
+		"clinic":
+			draw_rect(Rect2(em - Vector2(1.5, 4.5), Vector2(3, 9)), Color.WHITE)
+			draw_rect(Rect2(em - Vector2(4.5, 1.5), Vector2(9, 3)), Color.WHITE)
+		"book":
+			draw_rect(Rect2(em - Vector2(4, 3), Vector2(3.6, 6)), Color.WHITE)
+			draw_rect(Rect2(em - Vector2(-0.4, 3), Vector2(3.6, 6)), Color.WHITE)
+
+
+## Grand entrance: a row of columns, steps and a triangular roof front.
+func _columns(o: Vector2, col: Color, h: float) -> void:
+	var x0 := gpos.x
+	var x1 := gpos.x + gsize.x
+	var y1 := gpos.y + gsize.y
+	var stone := Color("#f3eee4")
+	IsoDraw.box(self, o, Vector2(x0 + 0.6, y1), Vector2(gsize.x - 1.2, 0.5), 5, stone.darkened(0.08))
+	IsoDraw.box(self, o, Vector2(x0 + 0.8, y1), Vector2(gsize.x - 1.6, 0.25), 10, stone.darkened(0.04))
+	var n := int(gsize.x) + 1
+	for i in n:
+		var x := x0 + 0.9 + i * (gsize.x - 1.8) / float(n - 1)
+		IsoDraw.box(self, o, Vector2(x - 0.09, y1 + 0.25), Vector2(0.18, 0.18), h - 14, stone, 10)
+	IsoDraw.box(self, o, Vector2(x0 + 0.6, y1), Vector2(gsize.x - 1.2, 0.5), 8, stone, h - 4)
+	draw_colored_polygon(PackedVector2Array([IsoDraw.pt(o, x0 + 0.6, y1 + 0.5, h + 4),
+		IsoDraw.pt(o, x1 - 0.6, y1 + 0.5, h + 4), IsoDraw.pt(o, (x0 + x1) * 0.5, y1 + 0.5, h + 34)]), stone)
+	draw_circle(IsoDraw.pt(o, (x0 + x1) * 0.5, y1 + 0.5, h + 16), 7, col, true, -1.0, true)
+	_emblem(IsoDraw.pt(o, (x0 + x1) * 0.5, y1 + 0.5, h + 16), "book")
 
 
 func _window_y(o: Vector2, y: float, xa: float, xb: float, za: float, zb: float) -> void:
@@ -223,3 +258,70 @@ func _mannequin(o: Vector2) -> void:
 	draw_line(Vector2(0, -2), Vector2(0, -20), Color("#8a6446"), 2.5)
 	draw_colored_polygon(PackedVector2Array([Vector2(-7, -50), Vector2(7, -50), Vector2(12, -18), Vector2(-12, -18)]), dress)
 	draw_circle(Vector2(0, -56), 6, Color("#e8dccb"), true, -1.0, true)
+
+
+# --- town & nature props ------------------------------------------------------
+
+## Garden gate: two posts and a beam with a few blossoms. axis "y" spans x, "x" spans y.
+func _arch(o: Vector2) -> void:
+	var post := Color("#8a6446")
+	var along_x: bool = spec.get("axis", "y") == "y"
+	var a := gpos
+	var b := gpos + (Vector2(gsize.x, 0) if along_x else Vector2(0, gsize.y))
+	var t := Vector2(0.16, 0.16)
+	IsoDraw.box(self, o, a - t * 0.5, t, 66, post)
+	IsoDraw.box(self, o, b - t * 0.5, t, 66, post)
+	var beam_size := Vector2(gsize.x + 0.3, 0.2) if along_x else Vector2(0.2, gsize.y + 0.3)
+	IsoDraw.box(self, o, a - Vector2(0.15, 0.1) if along_x else a - Vector2(0.1, 0.15), beam_size, 8, post.lightened(0.1), 64)
+	for i in 5:
+		var p := a.lerp(b, (i + 0.5) / 5.0)
+		draw_circle(IsoDraw.pt(o, p.x, p.y, 74), 5, Color("#86b47d"), true, -1.0, true)
+		draw_circle(IsoDraw.pt(o, p.x, p.y, 76) + Vector2(2, -2), 2.4, Color("#f2a7b8"), true, -1.0, true)
+
+
+func _fountain(o: Vector2) -> void:
+	var stone := Color("#d9d2c5")
+	IsoDraw.box(self, o, gpos, gsize, 14, stone)
+	IsoDraw.diamond(self, o, gpos + Vector2(0.18, 0.18), gsize - Vector2(0.36, 0.36), Palette.WATER, 14)
+	var c := gpos + gsize * 0.5
+	IsoDraw.box(self, o, c - Vector2(0.15, 0.15), Vector2(0.3, 0.3), 34, stone.lightened(0.05), 14)
+	var top := IsoDraw.pt(o, c.x, c.y, 50)
+	draw_circle(top + Vector2(0, -6), 7, Color(0.75, 0.9, 0.97, 0.75), true, -1.0, true)
+	for dx in [-14.0, 14.0]:
+		draw_line(top + Vector2(0, -8), top + Vector2(dx, 16), Color(0.75, 0.9, 0.97, 0.7), 2.0, true)
+
+
+func _stall(o: Vector2) -> void:
+	var canopy := Furniture.color(spec.get("accent", "#c8604a"), spec)
+	var wood := Color("#8a6446")
+	var x1 := gpos.x + gsize.x
+	IsoDraw.box(self, o, gpos + Vector2(0, 0.05), Vector2(0.1, 0.1), 62, wood)
+	IsoDraw.box(self, o, Vector2(x1 - 0.1, gpos.y + 0.05), Vector2(0.1, 0.1), 62, wood)
+	IsoDraw.box(self, o, gpos + Vector2(0, 0.3), gsize - Vector2(0, 0.3), 26, Color("#b08560"))
+	var goods := [Color("#c94a4a"), Color("#e0b65c"), Color("#86b38a"), Color("#e08a4c"), Color("#9a86c9")]
+	for i in 6:
+		var p := IsoDraw.pt(o, gpos.x + 0.2 + i * (gsize.x - 0.4) / 5.0, gpos.y + 0.65, 30)
+		draw_circle(p, 5, goods[i % goods.size()], true, -1.0, true)
+	IsoDraw.box(self, o, gpos - Vector2(0.1, 0.1), Vector2(gsize.x + 0.2, gsize.y * 0.8), 5, canopy, 62)
+	for i in 3:
+		var xa := gpos.x - 0.1 + (gsize.x + 0.2) * (i * 2 + 1) / 6.0
+		IsoDraw.face_y(self, o, gpos.y - 0.1 + gsize.y * 0.8, xa, xa + (gsize.x + 0.2) / 6.0, 62, 67, Color("#fbf6ec"))
+
+
+func _rock() -> void:
+	var g := Color("#a9a39a")
+	IsoDraw.shadow(self, Vector2.ZERO, 16)
+	IsoDraw.ellipse(self, Vector2(-4, -6), 13, 9, g.darkened(0.12))
+	IsoDraw.ellipse(self, Vector2(5, -8), 10, 8, g)
+	IsoDraw.ellipse(self, Vector2(3, -11), 5, 3, g.lightened(0.2))
+
+
+func _globe(o: Vector2) -> void:
+	var c := gpos + gsize * 0.5
+	IsoDraw.shadow(self, Vector2.ZERO, 9)
+	IsoDraw.box(self, o, c - Vector2(0.15, 0.15), Vector2(0.3, 0.3), 4, Color("#8a6446"))
+	draw_line(Vector2(0, -4), Vector2(0, -22), Color("#8a6446"), 2.5, true)
+	draw_circle(Vector2(0, -32), 11, Color("#6fa6c9"), true, -1.0, true)
+	IsoDraw.ellipse(self, Vector2(-3, -34), 5, 3.5, Color("#86b38a"))
+	IsoDraw.ellipse(self, Vector2(4, -28), 3.5, 2.5, Color("#86b38a"))
+	draw_arc(Vector2(0, -32), 13, -2.2, 0.9, 16, Color("#c49a4a"), 1.5, true)
