@@ -8,6 +8,7 @@ var _failed := 0
 var GameState
 var Privacy
 var SaveManager
+var Sound
 
 
 func _init() -> void:
@@ -15,10 +16,12 @@ func _init() -> void:
 	GameState = root.get_node("GameState")
 	Privacy = root.get_node("Privacy")
 	SaveManager = root.get_node("SaveManager")
+	Sound = root.get_node("Sound")
 	_test_places_build()
 	_test_paths_stay_open()
 	_test_decor_roundtrip()
 	_test_pin()
+	_test_sound_setting()
 	print("\n%s" % ("ALL TESTS PASSED" if _failed == 0 else "%d TEST(S) FAILED" % _failed))
 	quit(1 if _failed > 0 else 0)
 
@@ -100,4 +103,16 @@ func _test_pin() -> void:
 	check(str(GameState.data.security.pin_hash).find("1234") < 0, "PIN is not stored in plain text")
 	Privacy.clear_pin()
 	check(not Privacy.has_pin(), "PIN removed")
+	SaveManager.delete_world()
+
+
+func _test_sound_setting() -> void:
+	print("sound on/off")
+	check(Sound.enabled(), "sound is on by default")
+	Sound.set_enabled(false)
+	check(not Sound.enabled() and AudioServer.is_bus_mute(0), "turning sound off mutes everything")
+	GameState.reset()
+	check(not Sound.enabled(), "starting over keeps her sound choice")
+	Sound.set_enabled(true)
+	check(not AudioServer.is_bus_mute(0), "turning sound on unmutes")
 	SaveManager.delete_world()

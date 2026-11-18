@@ -114,3 +114,4 @@ static func dim(parent: Control) -> ColorRect:
 	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	parent.add_child(r)
 	return r
+

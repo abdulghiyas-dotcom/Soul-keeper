@@ -4,8 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
 "$GODOT" --headless --import >/dev/null 2>&1 || true
-"$GODOT" --headless --script res://tools/build_theme.gd
-"$GODOT" --headless --script res://tools/build_icons.gd
+timeout 120 "$GODOT" --headless --script res://tools/build_theme.gd
+timeout 120 "$GODOT" --headless --script res://tools/build_icons.gd
 mkdir -p build/web
 touch build/.gdignore  # keep Godot from importing its own build output
 "$GODOT" --headless --export-release "Web" build/web/index.html

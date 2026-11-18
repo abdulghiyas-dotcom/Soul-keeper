@@ -28,6 +28,7 @@ static func default_data() -> Dictionary:
 		"location": {"scene": "exterior", "x": -1.0, "y": -1.0},
 		"security": {"salt": "", "pin_hash": ""},
 		"decor": {},  # location key -> [{kind, x, y, accent}]
+		"settings": {"sound": true},
 	}
 
 
@@ -38,8 +39,10 @@ func has_world() -> bool:
 func reset() -> void:
 	# Starting over also removes the PIN (this is the "forgot PIN" path).
 	var lang = data.get("language", "")
+	var settings = data.get("settings", {}).duplicate()
 	data = default_data()
 	data.language = lang
+	data.settings.merge(settings, true)
 	SaveManager.delete_world()
 
 

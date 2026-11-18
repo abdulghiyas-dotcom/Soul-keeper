@@ -17,6 +17,7 @@ var frozen := false
 var _facing_back := false
 var _walk_t := 0.0
 var _last_tile := Vector2i(-99, -99)
+var _step_t := 0.0
 
 
 func place(at: Vector2) -> void:
@@ -54,6 +55,10 @@ func _process(delta: float) -> void:
 		if not _try_move(step):
 			path.clear()
 		_walk_t += delta
+		_step_t += delta
+		if _step_t >= 0.32:
+			_step_t = 0.0
+			Sound.play("step", -12.0, 0.15)
 		var screen_dir := Iso.to_screen(step)
 		if absf(screen_dir.y) > 0.001:
 			_facing_back = screen_dir.y < 0.0

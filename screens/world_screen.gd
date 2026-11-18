@@ -84,6 +84,7 @@ func _load_location(id: String, spawn: Vector2) -> void:
 	cam.reset_smoothing()
 
 	_place_label.text = WorldData.label_key(id, GameState.data)
+	Sound.set_ambience({"exterior": "birds", "town": "birds", "hills": "stream"}.get(id, ""))
 	_decorate_btn.visible = Decor.editable(id) and not _editing
 	if _editing:
 		player.frozen = true
@@ -97,6 +98,7 @@ func _go(id: String, spawn: Vector2) -> void:
 		return
 	_busy = true
 	player.frozen = true
+	Sound.play("door")
 	var tw := create_tween()
 	tw.tween_property(_fade, "color:a", 1.0, 0.25)
 	await tw.finished
@@ -273,6 +275,7 @@ func _open_menu() -> void:
 	box.add_child(UI.button("PRIVACY", func() -> void:
 		_close_overlay()
 		_open_privacy()))
+	box.add_child(SoundToggle.new())
 	var langs := HBoxContainer.new()
 	langs.alignment = BoxContainer.ALIGNMENT_CENTER
 	langs.add_theme_constant_override("separation", 8)
@@ -314,6 +317,7 @@ func _open_pin_setup(mode: PinSetup.Mode) -> void:
 	setup.finished.connect(func(msg: String) -> void:
 		_close_overlay()
 		if msg != "":
+			Sound.play("chime")
 			_show_toast(msg))
 
 
@@ -341,6 +345,7 @@ func _open_career_picker() -> void:
 		var id: String = c.id
 		var b := UI.button(c.key, func() -> void:
 			GameState.data.career = id
+			Sound.play("chime")
 			_close_overlay()
 			_reload_here()
 			_show_toast(c.key), 180)
@@ -454,6 +459,7 @@ func _edit_tap(tile: Vector2i) -> void:
 			return
 		item.x = tile.x
 		item.y = tile.y
+		Sound.play("place", 0.0, 0.1)
 		var keep := _selected
 		_reload_here()
 		_selected = keep
@@ -469,6 +475,7 @@ func _edit_tap(tile: Vector2i) -> void:
 			_show_toast(err)
 			return
 		items.append({"kind": _pick_kind, "x": tile.x, "y": tile.y, "accent": -1})
+		Sound.play("place", 0.0, 0.1)
 		_reload_here()
 	elif map.user_at.has(tile):
 		_selected = map.user_at[tile]
@@ -481,6 +488,7 @@ func _remove_selected() -> void:
 	if _selected < 0:
 		return
 	_items().remove_at(_selected)
+	Sound.play("remove")
 	_selected = -1
 	_reload_here()
 	_show_catalog()

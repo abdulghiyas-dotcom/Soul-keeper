@@ -11,6 +11,7 @@ var _box: VBoxContainer
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	RenderingServer.set_default_clear_color(Color("#f3dccb"))
+	Sound.set_ambience("")
 	var bg := Backdrop.new()
 	bg.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(bg)
@@ -55,6 +56,10 @@ func _build() -> void:
 				GameState.save())
 		langs.add_child(b)
 	_box.add_child(langs)
+	var snd := SoundToggle.new(180)
+	snd.custom_minimum_size.y = 46
+	snd.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_box.add_child(snd)
 
 
 func _confirm_start_over() -> void:

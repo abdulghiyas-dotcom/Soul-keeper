@@ -17,6 +17,7 @@ I18n="*res://autoload/i18n.gd"
 SaveManager="*res://autoload/save_manager.gd"
 GameState="*res://autoload/game_state.gd"
 Privacy="*res://autoload/privacy.gd"
+Sound="*res://autoload/sound.gd"
 
 [display]
 

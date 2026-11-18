@@ -67,5 +67,7 @@
 	"REMOVE": "Remove",
 	"BLOCKED_SPOT": "Something is already there.",
 	"BLOCKS_PATH": "That would block the way.",
-	"TOO_MANY": "There is no more room here."
+	"TOO_MANY": "There is no more room here.",
+	"SOUND_ON": "Sound: on",
+	"SOUND_OFF": "Sound: off"
 }

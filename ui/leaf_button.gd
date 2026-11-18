@@ -4,6 +4,7 @@ extends Button
 
 
 func _init() -> void:
+	set_meta("silent", true)  # hiding should never make a sound
 	custom_minimum_size = Vector2(52, 52)
 	focus_mode = FOCUS_NONE
 	for state in ["normal", "hover", "pressed"]:

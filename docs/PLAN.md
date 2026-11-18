@@ -65,6 +65,8 @@ Customisable avatar · explorable dream world · home exterior and interior · g
 15. *(Session 4)* Decorating only in her own spaces (garden, home, workplace); public places stay fixed. Picture-only tray, no words. Each workplace type keeps its own decorations. Max 60 items per place. Built-in furniture stays fixed; only what she places can be moved.
 16. *(Session 4)* Automated tests (`tests/run_tests.gd`) run in CI before every web build.
 
+17. *(Session 4)* Sound: generated placeholder music/ambience/effects (no licences). On by default but quiet; on/off switch on the title screen and in the Menu; silenced instantly by quick-hide and auto-lock; the hide button itself never makes a sound.
+
 ## 11. Open questions
 - Who can review the Dari and Pashto text?
 - Should she also be able to move or remove the built-in furniture, not just what she adds?
@@ -72,4 +74,6 @@ Customisable avatar · explorable dream world · home exterior and interior · g
 - Hosting for test links: itch.io (restricted page) or Netlify?
 - Should the saved world be encrypted with the PIN (stronger protection, but a forgotten PIN then loses everything for certain)?
 - Is ~45 MB first download acceptable on users' data plans? (Godot's engine is most of it; a smaller custom engine build is possible later.)
+- Should sound start **off** by default for safety, with women turning it on themselves? (Currently on, quietly.)
+- Real music later: a local musician (e.g. rubab or santur) would make it feel like home.
 - Should quick-hide also trigger from a gesture (e.g. shaking the phone, or a two-finger tap)?
