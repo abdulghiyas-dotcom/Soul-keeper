@@ -12,12 +12,25 @@ var map: IsoMap
 var player: Player
 var location := "exterior"
 var _hud: CanvasLayer
+var _hud_root: Control
 var _overlay_layer: CanvasLayer
 var _place_label: Label
 var _toast: Label
 var _fade: ColorRect
 var _busy := false
 var _current_overlay: Control = null
+var _menu_btn: Button
+var _decorate_btn: Button
+
+# Decorate mode
+var _editing := false
+var _edit_cam: Camera2D
+var _decor_panel: DecorPanel
+var _pick_kind := ""
+var _selected := -1
+var _moving := false
+var _press_pos := Vector2.ZERO
+var _drag_dist := 0.0
 var _autosave_t := 0.0
 
 
@@ -71,6 +84,11 @@ func _load_location(id: String, spawn: Vector2) -> void:
 	cam.reset_smoothing()
 
 	_place_label.text = WorldData.label_key(id, GameState.data)
+	_decorate_btn.visible = Decor.editable(id) and not _editing
+	if _editing:
+		player.frozen = true
+		_edit_cam.make_current()
+		_refresh_highlight()
 	_save()
 
 
@@ -104,6 +122,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):  # Esc = hide instantly
 		hide_requested.emit()
 		get_viewport().set_input_as_handled()
+		return
+	if _editing and _current_overlay == null:
+		_edit_input(event)
 		return
 	if _busy or player == null or player.frozen:
 		return
@@ -160,7 +181,14 @@ func _build_hud() -> void:
 	gap.custom_minimum_size.x = 8
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(gap)
-	bar.add_child(UI.button("MENU", _open_menu, 110))
+	_decorate_btn = UI.button("DECORATE", _enter_edit, 110)
+	bar.add_child(_decorate_btn)
+	var gap2 := Control.new()
+	gap2.custom_minimum_size.x = 8
+	gap2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(gap2)
+	_menu_btn = UI.button("MENU", _open_menu, 110)
+	bar.add_child(_menu_btn)
 
 	_toast = UI.label("", 20)
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -172,6 +200,8 @@ func _build_hud() -> void:
 	_toast.modulate.a = 0.0
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_toast)
+
+	_hud_root = root
 
 	_overlay_layer = CanvasLayer.new()
 	_overlay_layer.layer = 5
@@ -189,6 +219,14 @@ func _build_hud() -> void:
 
 func _show_toast(key: String, seconds := 2.0) -> void:
 	_toast.text = key
+	# While decorating, the tray covers the bottom, so messages show at the top.
+	_toast.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP if _editing else Control.PRESET_CENTER_BOTTOM)
+	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_toast.grow_vertical = Control.GROW_DIRECTION_END if _editing else Control.GROW_DIRECTION_BEGIN
+	if _editing:
+		_toast.offset_top = 84
+	else:
+		_toast.offset_bottom = -24
 	var tw := create_tween()
 	tw.tween_property(_toast, "modulate:a", 1.0, 0.25)
 	tw.tween_interval(seconds)
@@ -318,6 +356,163 @@ func _open_career_picker() -> void:
 
 func _reload_here() -> void:
 	_load_location(location, player.g)
+
+
+# --- decorate mode ------------------------------------------------------------
+
+func _enter_edit() -> void:
+	if _busy or _current_overlay or not Decor.editable(location):
+		return
+	_editing = true
+	_pick_kind = ""
+	_selected = -1
+	_moving = false
+	player.frozen = true
+	player.path.clear()
+	_decorate_btn.visible = false
+	_menu_btn.visible = false
+	_edit_cam = Camera2D.new()
+	_edit_cam.position = player.position + Vector2(0, 40)  # a little lower: the tray covers the bottom
+	add_child(_edit_cam)
+	_edit_cam.make_current()
+	_decor_panel = DecorPanel.new()
+	_hud_root.add_child(_decor_panel)
+	_decor_panel.kind_picked.connect(func(k: String) -> void:
+		_pick_kind = "" if k == _pick_kind else k
+		_show_catalog())
+	_decor_panel.done_pressed.connect(_exit_edit)
+	_decor_panel.deselect_pressed.connect(_deselect)
+	_decor_panel.move_pressed.connect(func() -> void:
+		_moving = true
+		_decor_panel.set_hint("MOVE_HINT"))
+	_decor_panel.remove_pressed.connect(_remove_selected)
+	_decor_panel.color_picked.connect(func(i: int) -> void:
+		_items()[_selected].accent = i
+		_reload_here())
+	_show_catalog()
+
+
+func _exit_edit() -> void:
+	_editing = false
+	_decor_panel.queue_free()
+	_edit_cam.queue_free()
+	_menu_btn.visible = true
+	_decorate_btn.visible = true
+	map.set_highlight([])
+	player.frozen = false
+	player.get_child(0).make_current()
+	_save()
+
+
+func _items() -> Array:
+	return GameState.decor(Decor.key(location, GameState.data))
+
+
+func _show_catalog() -> void:
+	_selected = -1
+	_moving = false
+	_decor_panel.show_catalog(Decor.catalog(location), _pick_kind)
+	_refresh_highlight()
+
+
+func _deselect() -> void:
+	_show_catalog()
+
+
+func _refresh_highlight() -> void:
+	if _selected >= 0:
+		map.set_highlight(map.user_tiles(_selected), Color("#fff6c8"))
+	else:
+		map.set_highlight([])
+
+
+func _edit_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_press_pos = event.position
+			_drag_dist = 0.0
+		elif _drag_dist < 12.0:
+			_edit_tap(Iso.tile_of(Iso.to_grid(map.get_local_mouse_position())))
+		get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
+		_drag_dist += event.relative.length()
+		if _drag_dist >= 12.0:
+			_edit_cam.position -= event.relative / _edit_cam.zoom
+			var lo := Iso.to_screen(Vector2(0, map.size.y))
+			var hi := Iso.to_screen(Vector2(map.size.x, 0))
+			_edit_cam.position = _edit_cam.position.clamp(Vector2(lo.x, -60), Vector2(hi.x, Iso.to_screen(Vector2(map.size)).y))
+		get_viewport().set_input_as_handled()
+
+
+func _edit_tap(tile: Vector2i) -> void:
+	var items := _items()
+	if _moving and _selected >= 0:
+		var item: Dictionary = items[_selected]
+		var err := _can_place(str(item.kind), tile, _selected)
+		if err != "":
+			_show_toast(err)
+			return
+		item.x = tile.x
+		item.y = tile.y
+		var keep := _selected
+		_reload_here()
+		_selected = keep
+		_moving = false
+		_decor_panel.show_item(str(item.kind), int(item.get("accent", -1)))
+		_refresh_highlight()
+	elif _pick_kind != "":
+		if items.size() >= Decor.MAX_ITEMS:
+			_show_toast("TOO_MANY")
+			return
+		var err := _can_place(_pick_kind, tile, -1)
+		if err != "":
+			_show_toast(err)
+			return
+		items.append({"kind": _pick_kind, "x": tile.x, "y": tile.y, "accent": -1})
+		_reload_here()
+	elif map.user_at.has(tile):
+		_selected = map.user_at[tile]
+		var item: Dictionary = items[_selected]
+		_decor_panel.show_item(str(item.kind), int(item.get("accent", -1)))
+		_refresh_highlight()
+
+
+func _remove_selected() -> void:
+	if _selected < 0:
+		return
+	_items().remove_at(_selected)
+	_selected = -1
+	_reload_here()
+	_show_catalog()
+
+
+## "" if the item can go on `tile`, otherwise the message key explaining why not.
+## `ignore` is the index of the item being moved (its own tiles count as free).
+func _can_place(kind: String, tile: Vector2i, ignore: int) -> String:
+	var freed := {}
+	if ignore >= 0:
+		for t in map.user_tiles(ignore):
+			freed[t] = true
+	var tiles := Decor.footprint(tile, kind)
+	var here := Iso.tile_of(player.g)
+	for t in tiles:
+		if not map.in_bounds(t) or not map.door_at(t).is_empty() or map.keep_clear.has(t):
+			return "BLOCKED_SPOT"
+		if Decor.is_decal(kind):
+			continue
+		if t == here or (map.solid.has(t) and not freed.has(t)):
+			return "BLOCKED_SPOT"
+	if Decor.is_decal(kind):
+		for t in tiles:  # one rug per spot
+			if map.user_at.has(t) and map.user_at[t] != ignore and Decor.is_decal(str(_items()[map.user_at[t]].kind)):
+				return "BLOCKED_SPOT"
+		return ""
+	var extra := {}
+	for t in tiles:
+		extra[t] = true
+	if not map.keeps_paths_open(extra, freed, here):
+		return "BLOCKS_PATH"
+	return ""
 
 
 class TapMarker extends Node2D:

@@ -10,7 +10,7 @@ Built with **Godot 4.4.1** (free, open-source). It runs in a web browser now and
 
 ---
 
-## What works today (Phases 0–3, with Phase 2 well under way)
+## What works today (Phases 0–3 complete)
 
 | Feature | Status |
 |---|---|
@@ -26,6 +26,8 @@ Built with **Godot 4.4.1** (free, open-source). It runs in a web browser now and
 | Phone-sized layout (portrait and landscape) | ✅ |
 | **Town** through the garden gate: market stalls, fountain, a **university** and a **library** she can walk into | ✅ |
 | **Mountain view**: snowy peaks, a river with a bridge, wildflowers and a quiet lookout bench | ✅ |
+| **Decorate** her own garden, home and workplace: pick from pictures (no reading needed), tap to place, drag to look around; tap something she placed to move it, recolour it, or remove it | ✅ |
+| Placement rules: nothing on doors or arrival spots, and nothing that would block the way to a door | ✅ |
 | **Optional 4-digit PIN** (Menu → Privacy). Stored only as a salted hash on the device | ✅ |
 | **Auto-lock** whenever the app goes to the background (switching apps, locking the phone, changing tabs) | ✅ |
 | **Quick-hide**: the leaf button (or Esc) instantly shows neutral "Garden notes" gardening tips. Tap the leaf there to come back (PIN asked if set) | ✅ |
@@ -38,6 +40,7 @@ Built with **Godot 4.4.1** (free, open-source). It runs in a web browser now and
 
 ![Town, university, library and mountain view](docs/screenshots/places.png)
 ![PIN pad, garden-notes cover screen, lock screen](docs/screenshots/privacy.png)
+![Decorating: the picture tray, a selected bed, recoloured](docs/screenshots/decorate.png)
 
 **Not built yet (by design):** goals, journaling, AI guide. See [docs/PLAN.md](docs/PLAN.md).
 
@@ -79,7 +82,8 @@ autoload/              Always-running helpers
 localization/          languages.json + one <code>.json per language (KEY → text)
 scenes/main.tscn/.gd   Switches between title, avatar creator, world
 screens/               Title screen, avatar creator, world screen (HUD, menu, workplace picker)
-ui/                    PIN pad, PIN setup, lock and cover screens (privacy_layer.gd), leaf button
+ui/                    PIN pad, PIN setup, lock and cover screens (privacy_layer.gd), leaf button, decorating tray
+tests/run_tests.gd     Automated checks (places, doors, decorating rules, saving, PIN). Also run on every push
 scripts/
   iso.gd               Isometric grid ↔ screen math
   iso_draw.gd          Placeholder art primitives (boxes, faces, ellipses)
@@ -87,6 +91,7 @@ scripts/
   avatar.gd            Draws the avatar from her choices
   furniture.gd         Furniture as data (lists of boxes); add new pieces here
   world_data.gd        Every location (garden, home, workplaces) as data
+  decor.gd             What she can place where (catalogs, sizes, recolourable items)
   iso_map.gd / iso_ground.gd / iso_object.gd   Builds and draws a location; A* pathfinding
   player.gd            Movement, collision, tap-to-walk
   ui.gd                Shared menu style
@@ -98,7 +103,8 @@ tools/                 export_web.sh (build + offline patch), build_theme.gd, bu
 ### Common changes
 - **Add a language:** add an entry in `localization/languages.json` and create `<code>.json` with the same keys as `en.json`. No code changes.
 - **Fix a translation:** edit the `.json` file. *Dari and Pashto texts were written by an AI and need review by native speakers before launch, especially Pashto.*
-- **Add furniture:** add an entry to `PRESETS` in `scripts/furniture.gd`, then place it in a room in `scripts/world_data.gd`.
+- **Add furniture:** add an entry to `PRESETS` in `scripts/furniture.gd`, then place it in a room in `scripts/world_data.gd`. To let her place it herself, also add its name to `INDOOR` or `OUTDOOR` in `scripts/decor.gd`.
+- **Run the checks:** `godot --headless --script res://tests/run_tests.gd` (prints ALL TESTS PASSED).
 - **Add a new place:** write a builder function in `world_data.gd` (copy `_hills()` or `_library()`), add it to `build()` and `PLACE_LABELS`, add a door to it from an existing place, and add a `PLACE_…` key to each language file.
 - **Add a workplace type:** add it to `CAREERS` in `world_data.gd`, add its furniture in `_career()`, and add a `CAREER_…` key to each language file.
 - **Swap in real art later:** only `iso_draw.gd`, `iso_object.gd`, `iso_ground.gd` and `avatar.gd` draw things. Replace their drawing with sprites; the data, saving and movement don't change.

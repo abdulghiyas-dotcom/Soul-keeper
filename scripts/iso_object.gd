@@ -7,13 +7,15 @@ extends Node2D
 var spec: Dictionary
 var gpos: Vector2
 var gsize: Vector2
+var origin: Vector2  # screen position of the footprint centre in map space
 
 
 func setup(s: Dictionary) -> IsoObject:
 	spec = s
 	gpos = s.pos
 	gsize = s.get("size", Furniture.size_of(s.kind))
-	position = Iso.to_screen(gpos + gsize * 0.5)
+	origin = Iso.to_screen(gpos + gsize * 0.5)
+	position = origin
 	return self
 
 
@@ -26,9 +28,10 @@ func footprint() -> Array[Vector2i]:
 
 
 func _draw() -> void:
-	var o := position
+	var o := origin
 	match str(spec.kind):
 		"tree": _tree()
+		"fruit_tree": _tree(1)
 		"bush": _bush()
 		"plant": _plant(o)
 		"flowers": _flowers(o)
@@ -54,13 +57,15 @@ func _variant() -> int:
 	return int(absf(gpos.x * 7.0 + gpos.y * 13.0)) % 3
 
 
-func _tree() -> void:
-	var v := _variant()
+func _tree(force_variant := -1) -> void:
+	var v := _variant() if force_variant < 0 else force_variant
+	if force_variant < 0 and v == 1 and spec.has("user"):
+		v = 2  # a plain tree she placed never grows fruit; "fruit_tree" does
 	var k := 0.9 + 0.12 * v
 	var greens := [Color("#6fa86a"), Color("#7fb877"), Color("#5f9a63")]
 	var g: Color = greens[v]
 	IsoDraw.shadow(self, Vector2.ZERO, 24 * k)
-	IsoDraw.box(self, position, gpos + gsize * 0.5 - Vector2(0.1, 0.1), Vector2(0.2, 0.2), 34 * k, Color("#8a6446"))
+	IsoDraw.box(self, origin, gpos + gsize * 0.5 - Vector2(0.1, 0.1), Vector2(0.2, 0.2), 34 * k, Color("#8a6446"))
 	draw_circle(Vector2(-13, -44) * k, 17 * k, g.darkened(0.12), true, -1.0, true)
 	draw_circle(Vector2(13, -46) * k, 17 * k, g.darkened(0.08), true, -1.0, true)
 	draw_circle(Vector2(0, -56) * k, 22 * k, g, true, -1.0, true)

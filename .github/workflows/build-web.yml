@@ -25,6 +25,11 @@ jobs:
           unzip -q -j "Godot_v${GODOT_VERSION}-stable_export_templates.tpz" 'templates/web*' 'templates/version.txt' -d "$dest"
           echo "GODOT=$RUNNER_TEMP/Godot_v${GODOT_VERSION}-stable_linux.x86_64" >> "$GITHUB_ENV"
 
+      - name: Run tests
+        run: |
+          "$GODOT" --headless --import >/dev/null 2>&1 || true
+          "$GODOT" --headless --script res://tests/run_tests.gd
+
       - name: Export web build
         run: tools/export_web.sh
 

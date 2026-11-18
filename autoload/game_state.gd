@@ -3,7 +3,7 @@ extends Node
 ## Bump SAVE_VERSION and extend _migrate() whenever the data shape changes,
 ## so worlds saved by older versions keep working.
 
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2  # 2: added "decor"
 
 var data: Dictionary = {}
 
@@ -27,6 +27,7 @@ static func default_data() -> Dictionary:
 		"career": "",  # "" until she chooses; see WorldData.CAREERS
 		"location": {"scene": "exterior", "x": -1.0, "y": -1.0},
 		"security": {"salt": "", "pin_hash": ""},
+		"decor": {},  # location key -> [{kind, x, y, accent}]
 	}
 
 
@@ -44,6 +45,13 @@ func reset() -> void:
 
 func save() -> bool:
 	return SaveManager.save_world(data)
+
+
+## The list of things she placed in a location (created if missing).
+func decor(location_key: String) -> Array:
+	if not data.decor.has(location_key):
+		data.decor[location_key] = []
+	return data.decor[location_key]
 
 
 func look() -> Dictionary:

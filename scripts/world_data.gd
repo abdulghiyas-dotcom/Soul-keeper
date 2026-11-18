@@ -48,6 +48,19 @@ static func label_key(id: String, state: Dictionary) -> String:
 
 
 static func build(id: String, state: Dictionary) -> Dictionary:
+	var d := _build(id, state)
+	if Decor.editable(id):
+		var items: Array = state.get("decor", {}).get(Decor.key(id, state), [])
+		for i in items.size():
+			var spec := Decor.to_spec(items[i], i)
+			if Decor.is_decal(spec.kind):
+				d.decals.append(spec)
+			else:
+				d.objects.append(spec)
+	return d
+
+
+static func _build(id: String, state: Dictionary) -> Dictionary:
 	match id:
 		"home": return _home(state)
 		"career": return _career(state)
@@ -124,6 +137,7 @@ static func _exterior(state: Dictionary) -> Dictionary:
 		"id": "exterior", "size": Vector2i(18, 16), "outdoor": true, "sky": Palette.SKY_OUTSIDE,
 		"paths": paths, "decals": decals, "objects": objs, "blocked": blocked,
 		"doors": doors, "spawn": SPAWN_GARDEN_START,
+		"keep_clear": [SPAWN_GARDEN_START, SPAWN_GARDEN_FROM_HOME, SPAWN_GARDEN_FROM_WORK, SPAWN_GARDEN_FROM_TOWN],
 	})
 	return d
 
@@ -156,7 +170,7 @@ static func _home(state: Dictionary) -> Dictionary:
 			{"kind": "kitchen", "pos": Vector2(7, 2.6)},
 		],
 		"doors": {Vector2i(4, 7): {"action": "goto", "to": "exterior", "spawn": SPAWN_GARDEN_FROM_HOME}},
-		"spawn": SPAWN_INSIDE,
+		"spawn": SPAWN_INSIDE, "keep_clear": [SPAWN_INSIDE],
 	}
 
 
@@ -213,7 +227,7 @@ static func _career(state: Dictionary) -> Dictionary:
 		"walls": {"color": col.lightened(0.7), "decor": decor},
 		"decals": decals, "objects": objs,
 		"doors": {Vector2i(4, 7): {"action": "goto", "to": "exterior", "spawn": SPAWN_GARDEN_FROM_WORK}},
-		"spawn": SPAWN_INSIDE,
+		"spawn": SPAWN_INSIDE, "keep_clear": [SPAWN_INSIDE],
 	}
 
 

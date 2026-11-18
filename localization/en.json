@@ -58,5 +58,14 @@
 	"PLACE_TOWN": "Town",
 	"PLACE_UNIVERSITY": "University",
 	"PLACE_LIBRARY": "Library",
-	"PLACE_HILLS": "Mountain view"
+	"PLACE_HILLS": "Mountain view",
+	"DECORATE": "Decorate",
+	"DECOR_HINT": "Choose something, then tap where it should go. Drag to look around.",
+	"DECOR_SELECTED": "Move it, change its colour, or take it away.",
+	"MOVE": "Move",
+	"MOVE_HINT": "Tap the new place.",
+	"REMOVE": "Remove",
+	"BLOCKED_SPOT": "Something is already there.",
+	"BLOCKS_PATH": "That would block the way.",
+	"TOO_MANY": "There is no more room here."
 }

@@ -41,7 +41,7 @@ Customisable avatar · explorable dream world · home exterior and interior · g
 |---|---|---|
 | 0: Setup & skeleton | Project, folders, modular localisation (fa_AF/ps/en), RTL | ✅ Done |
 | 1: One location end-to-end in browser | Avatar, home exterior + interior, movement (tap + keys), local save/load on PWA-friendly storage, web export | ✅ Done |
-| 2: Expand the world | Garden ✅ · workplace plot with 6 choices, each enterable ✅ · town with market and fountain ✅ · university ✅ · library ✅ · mountain view with river ✅ · placing her own items ⬜ | 🟡 Mostly done |
+| 2: Expand the world | Garden ✅ · workplace plot with 6 choices, each enterable ✅ · town with market and fountain ✅ · university ✅ · library ✅ · mountain view with river ✅ · decorating her garden, home and workplace (place, move, recolour, remove) ✅ | ✅ Done |
 | 3: Privacy & discretion | PWA manifest + icons + "Add to Home Screen" ✅ · offline from first visit ✅ · PIN ✅ · auto-lock ✅ · quick-hide cover screen ✅ | ✅ Done |
 | 4: Polish & real-world testing | Share link, gather feedback, iterate; real art when funded | ⬜ |
 
@@ -62,9 +62,12 @@ Customisable avatar · explorable dream world · home exterior and interior · g
 13. *(Session 3)* Quick-hide shows neutral gardening tips that match the "Garden" cover name; tapping its leaf returns (through the PIN if set).
 14. *(Session 3)* Offline: Godot's service worker patched to cache the whole game on first visit (~45 MB).
 
+15. *(Session 4)* Decorating only in her own spaces (garden, home, workplace); public places stay fixed. Picture-only tray, no words. Each workplace type keeps its own decorations. Max 60 items per place. Built-in furniture stays fixed; only what she places can be moved.
+16. *(Session 4)* Automated tests (`tests/run_tests.gd`) run in CI before every web build.
+
 ## 11. Open questions
 - Who can review the Dari and Pashto text?
-- Should she be able to place and move items herself (trees, furniture) in Phase 2, or keep the world pre-arranged for now?
+- Should she also be able to move or remove the built-in furniture, not just what she adds?
 - What should the next Phase 2 places be (e.g. university, city street, mountains or the countryside)?
 - Hosting for test links: itch.io (restricted page) or Netlify?
 - Should the saved world be encrypted with the PIN (stronger protection, but a forgotten PIN then loses everything for certain)?

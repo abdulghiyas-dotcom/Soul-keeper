@@ -8,7 +8,10 @@ var size: Vector2i
 var objects: Node2D
 var solid := {}       # Vector2i -> true
 var door_of := {}     # solid tile -> door tile (tapping a house walks to its door)
+var user_at := {}     # tile -> index of the item she placed there (see Decor)
+var keep_clear := {}  # tiles where she arrives; never decorated over
 var astar := AStarGrid2D.new()
+var _highlight: Highlight
 
 
 func build(d: Dictionary) -> void:
@@ -21,9 +24,16 @@ func build(d: Dictionary) -> void:
 	objects.y_sort_enabled = true
 	add_child(objects)
 
+	for dec in d.get("decals", []):
+		if dec.has("user"):
+			for t in Decor.footprint(Iso.tile_of(dec.pos), dec.kind):
+				user_at[t] = dec.user
 	for s in d.get("objects", []):
 		var ob := IsoObject.new().setup(s)
 		objects.add_child(ob)
+		if s.has("user"):
+			for t in ob.footprint():
+				user_at[t] = s.user
 		if s.get("solid", true):
 			for t in ob.footprint():
 				solid[t] = true
@@ -33,6 +43,12 @@ func build(d: Dictionary) -> void:
 		solid[t] = true
 		if d.has("blocked_door"):
 			door_of[t] = d.blocked_door
+
+	for g in d.get("keep_clear", []):
+		keep_clear[Iso.tile_of(g)] = true
+	_highlight = Highlight.new()
+	_highlight.z_index = 10
+	add_child(_highlight)
 
 	astar.region = Rect2i(Vector2i.ZERO, size)
 	astar.cell_size = Vector2.ONE
@@ -94,3 +110,55 @@ func find_path(from: Vector2, to: Vector2i) -> PackedVector2Array:
 	if path.size() > 0:
 		path.remove_at(0)  # we are already on the first tile
 	return path
+
+
+## Tiles covered by the placed item with this index.
+func user_tiles(index: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for t in user_at:
+		if user_at[t] == index:
+			out.append(t)
+	return out
+
+
+## Would the avatar still reach every door and arrival spot if `extra` tiles were
+## blocked and `freed` tiles were cleared? (Stops her trapping herself.)
+func keeps_paths_open(extra: Dictionary, freed: Dictionary, from: Vector2i) -> bool:
+	var blocked := func(t: Vector2i) -> bool:
+		return not in_bounds(t) or extra.has(t) or (solid.has(t) and not freed.has(t))
+	if blocked.call(from):
+		return false
+	var seen := {from: true}
+	var queue: Array[Vector2i] = [from]
+	while not queue.is_empty():
+		var t: Vector2i = queue.pop_back()
+		for n in [t + Vector2i.RIGHT, t + Vector2i.LEFT, t + Vector2i.UP, t + Vector2i.DOWN]:
+			if not seen.has(n) and not blocked.call(n):
+				seen[n] = true
+				queue.append(n)
+	for t in data.get("doors", {}):
+		if not seen.has(t):
+			return false
+	for t in keep_clear:
+		if not seen.has(t):
+			return false
+	return true
+
+
+func set_highlight(tiles: Array, color := Color(1, 1, 1, 0.9)) -> void:
+	_highlight.tiles = tiles
+	_highlight.color = color
+	_highlight.queue_redraw()
+
+
+class Highlight extends Node2D:
+	var tiles: Array = []
+	var color := Color.WHITE
+
+	func _draw() -> void:
+		for t in tiles:
+			var p := PackedVector2Array([Iso.to_screen(Vector2(t)), Iso.to_screen(Vector2(t) + Vector2(1, 0)),
+				Iso.to_screen(Vector2(t) + Vector2(1, 1)), Iso.to_screen(Vector2(t) + Vector2(0, 1))])
+			draw_colored_polygon(p, Color(color, 0.25))
+			p.append(p[0])
+			draw_polyline(p, color, 2.0, true)
