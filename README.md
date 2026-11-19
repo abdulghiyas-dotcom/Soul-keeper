@@ -4,7 +4,8 @@ A calm, game-like space where Afghan women build a visual world of the future th
 
 > **Discretion:** the app presents itself only as **"Garden" / «باغ من» / «زما باغ»**, with a leaf icon. The project name *Soul Keeper* never appears to users. Please keep this repository private.
 
-![Garden](docs/screenshots/garden.png)
+
+![The 3D world: title, garden, home with the decorating tray, town, mountain view, clinic](docs/screenshots/world3d.png)
 
 Built with **Godot 4.4.1** (free, open-source). It runs in a web browser now and can later be exported to Android and iOS from the same project.
 
@@ -17,7 +18,9 @@ Built with **Godot 4.4.1** (free, open-source). It runs in a web browser now and
 | Dari (default), Pashto and English, with right-to-left layout | ✅ |
 | Create yourself: skin, headscarf (or none), hair, dress | ✅ |
 | Choose your home's wall and roof colours | ✅ |
-| Isometric garden: house, paths, trees, flowers, pond, bench | ✅ |
+| **3D world**: soft low-poly style, sky, warm sunlight, soft shadows, gently moving water, distant mountains | ✅ |
+| 3D avatar that turns to face where she walks, with swinging arms; 3D previews in the creator and decorating tray | ✅ |
+| Garden: house, paths, trees, flowers, pond, bench | ✅ |
 | Walk by tapping the ground (phone) or with arrow keys / WASD | ✅ |
 | Enter the home: bed, toshak, rug, low table, bookshelf, kitchen | ✅ |
 | Empty plot → she chooses her workplace: art studio, school, clinic, office, shop, or tailoring workshop | ✅ |
@@ -29,7 +32,7 @@ Built with **Godot 4.4.1** (free, open-source). It runs in a web browser now and
 | **Decorate** her own garden, home and workplace: pick from pictures (no reading needed), tap to place, drag to look around; tap something she placed to move it, recolour it, or remove it | ✅ |
 | Placement rules: nothing on doors or arrival spots, and nothing that would block the way to a door | ✅ |
 | **Gentle sound**: calm music, birdsong in the garden and town, a stream at the mountains, soft taps, steps, door and placing sounds | ✅ |
-| Sound on/off switch (Menu and title screen), remembered on the device. Quick-hide and auto-lock silence everything instantly | ✅ |
+| Sound on/off button (speaker icon at the top of the screen and on the title screen), remembered on the device. Quick-hide and auto-lock silence everything instantly | ✅ |
 | **Optional 4-digit PIN** (Menu → Privacy). Stored only as a salted hash on the device | ✅ |
 | **Auto-lock** whenever the app goes to the background (switching apps, locking the phone, changing tabs) | ✅ |
 | **Quick-hide**: the leaf button (or Esc) instantly shows neutral "Garden notes" gardening tips. Tap the leaf there to come back (PIN asked if set) | ✅ |
@@ -37,12 +40,8 @@ Built with **Godot 4.4.1** (free, open-source). It runs in a web browser now and
 | **Installable app** ("Add to Home Screen"), named only "Garden" with a leaf icon, opening full-screen | ✅ |
 | **Works fully offline** after the first visit: the whole game is cached on the device | ✅ |
 
-![The six workplace interiors](docs/screenshots/workplaces.png)
-![Phone layout in English](docs/screenshots/phone.png)
 
-![Town, university, library and mountain view](docs/screenshots/places.png)
 ![PIN pad, garden-notes cover screen, lock screen](docs/screenshots/privacy.png)
-![Decorating: the picture tray, a selected bed, recoloured](docs/screenshots/decorate.png)
 
 **Not built yet (by design):** goals, journaling, AI guide. See [docs/PLAN.md](docs/PLAN.md).
 
@@ -85,17 +84,20 @@ autoload/              Always-running helpers
 localization/          languages.json + one <code>.json per language (KEY → text)
 scenes/main.tscn/.gd   Switches between title, avatar creator, world
 screens/               Title screen, avatar creator, world screen (HUD, menu, workplace picker)
-ui/                    PIN pad, PIN setup, lock and cover screens (privacy_layer.gd), leaf button, decorating tray
+shaders/               World lighting, single-colour lighting, glowing glass, water
+ui/                    Sound button, 3D preview stage, PIN pad, PIN setup, lock and cover screens (privacy_layer.gd), leaf button, decorating tray
 tests/run_tests.gd     Automated checks (places, doors, decorating rules, saving, PIN). Also run on every push
 scripts/
-  iso.gd               Isometric grid ↔ screen math
-  iso_draw.gd          Placeholder art primitives (boxes, faces, ellipses)
+  iso.gd               Grid helpers (tile of a position, grid → 3D)
+  map_grid.gd          A place's rules: walkable tiles, doors, A* paths, decorating checks
+  mesh_builder.gd      Builds merged low-poly 3D meshes from boxes, cylinders, spheres, roofs
+  object_meshes.gd     The 3D shape of every object, wall decoration, ground and soft shadow
+  world_view.gd        Draws a place in 3D: sky, sun, meshes, water; turns taps into tiles
+  avatar3d.gd          The 3D avatar built from her choices (walk and idle animation)
   palette.gd           All colours
-  avatar.gd            Draws the avatar from her choices
   furniture.gd         Furniture as data (lists of boxes); add new pieces here
   world_data.gd        Every location (garden, home, workplaces) as data
   decor.gd             What she can place where (catalogs, sizes, recolourable items)
-  iso_map.gd / iso_ground.gd / iso_object.gd   Builds and draws a location; A* pathfinding
   player.gd            Movement, collision, tap-to-walk
   ui.gd                Shared menu style
 assets/fonts/          Vazirmatn (covers Dari, Pashto and Latin; SIL Open Font License)
@@ -112,7 +114,8 @@ tools/                 export_web.sh (build + offline patch), build_theme.gd, bu
 - **Run the checks:** `godot --headless --script res://tests/run_tests.gd` (prints ALL TESTS PASSED).
 - **Add a new place:** write a builder function in `world_data.gd` (copy `_hills()` or `_library()`), add it to `build()` and `PLACE_LABELS`, add a door to it from an existing place, and add a `PLACE_…` key to each language file.
 - **Add a workplace type:** add it to `CAREERS` in `world_data.gd`, add its furniture in `_career()`, and add a `CAREER_…` key to each language file.
-- **Swap in real art later:** only `iso_draw.gd`, `iso_object.gd`, `iso_ground.gd` and `avatar.gd` draw things. Replace their drawing with sprites; the data, saving and movement don't change.
+- **Swap in real 3D models later:** only `object_meshes.gd` and `avatar3d.gd` decide what things look like. A kind can be replaced by a `.glb` model (e.g. from an artist) without touching the data, saving, movement or decorating rules.
+- **Lighting:** the sun's strength and direction are in `world_view.gd` (`light_energy`) and `object_meshes.gd` (`SUN_DIR`, which drawn shadows follow). Real-time shadow maps are deliberately off: WebGL rendered them with washed-out colours, and drawn shadows are faster on phones.
 - **Change menu styling:** edit `scripts/ui.gd`, then run `godot --headless --script res://tools/build_theme.gd` to regenerate `assets/theme.tres`.
 
 ### Privacy notes

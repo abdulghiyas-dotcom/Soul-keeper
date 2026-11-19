@@ -108,11 +108,6 @@ static func size_of(kind: String) -> Vector2:
 	return PRESETS[kind].size if PRESETS.has(kind) else Vector2.ONE
 
 
-static func draw(ci: CanvasItem, o: Vector2, kind: String, at: Vector2, spec: Dictionary) -> void:
-	for p in PRESETS[kind].parts:
-		IsoDraw.box(ci, o, at + Vector2(p[0], p[1]), Vector2(p[2], p[3]), p[4], color(p[6], spec), p[5])
-
-
 static func color(c, spec: Dictionary) -> Color:
 	if c is Color:
 		return c

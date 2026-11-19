@@ -29,7 +29,7 @@ Afghan women inside Afghanistan and abroad. Some may be in restrictive or unsafe
 Dari (default) · Pashto · English. They're modular, so adding a language means adding a JSON file. **The Dari and Pashto text needs native-speaker review.**
 
 ## 7. Visual style
-Calm, hopeful, game-like **isometric 2.5D**. Placeholder art is soft geometric shapes drawn in code, kept in a few files so real art can replace it later.
+Calm, hopeful, game-like **3D** in a soft low-poly style (a small floating "diorama" world seen from a gentle angle). Everything is built in code from simple shapes with real lighting, soft shadows and moving water, kept in a few files so real 3D models can replace it later.
 
 ## 8. MVP features
 Customisable avatar · explorable dream world · home exterior and interior · garden surroundings · a self-chosen workplace that she can enter · local save and return.
@@ -67,6 +67,9 @@ Customisable avatar · explorable dream world · home exterior and interior · g
 
 17. *(Session 4)* Sound: generated placeholder music/ambience/effects (no licences). On by default but quiet; on/off switch on the title screen and in the Menu; silenced instantly by quick-hide and auto-lock; the hide button itself never makes a sound.
 
+18. *(Session 5)* **Moved from 2D to 3D** at the user's request. Built in code (free CC0 model packs reachable from here had no furniture or suitable character, and mixing styles looked patchy). Same data, saves, rules and UI underneath. Real-time shadow maps off (WebGL washed out colours); soft shadows drawn instead. Custom lighting shader so brightness is the same on every device.
+19. *(Session 5)* Sound button moved to the top bar (speaker icon), and the title screen.
+
 ## 11. Open questions
 - Who can review the Dari and Pashto text?
 - Should she also be able to move or remove the built-in furniture, not just what she adds?
@@ -74,6 +77,8 @@ Customisable avatar · explorable dream world · home exterior and interior · g
 - Hosting for test links: itch.io (restricted page) or Netlify?
 - Should the saved world be encrypted with the PIN (stronger protection, but a forgotten PIN then loses everything for certain)?
 - Is ~45 MB first download acceptable on users' data plans? (Godot's engine is most of it; a smaller custom engine build is possible later.)
+- How smooth is the 3D on the testers' actual phones (especially older Android)? If slow, options: fewer grass tufts, lower resolution, or a "simple graphics" switch.
+- Should she be able to turn the camera around her world (two-finger drag), or keep the fixed gentle angle?
 - Should sound start **off** by default for safety, with women turning it on themselves? (Currently on, quietly.)
 - Real music later: a local musician (e.g. rubab or santur) would make it feel like home.
 - Should quick-hide also trigger from a gesture (e.g. shaking the phone, or a two-finger tap)?

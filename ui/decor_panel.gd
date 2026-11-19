@@ -81,7 +81,7 @@ func _clear() -> void:
 		c.queue_free()
 
 
-## A square button showing a small drawing of the item itself.
+## A square button showing a small 3D picture of the item itself.
 class ItemButton extends Button:
 	var kind := ""
 	var selected := false
@@ -95,22 +95,27 @@ class ItemButton extends Button:
 			add_theme_stylebox_override(state, UI.sb(Color("#f6ecdf"), 14, border, 3 if selected else 2, 0))
 		var spec := Decor.to_spec({"kind": kind, "x": 0, "y": 0}, -1)
 		spec.erase("user")
-		var holder := Node2D.new()
-		add_child(holder)
 		var s: Vector2 = spec.size
-		var ob := IsoObject.new().setup(spec)
-		var extent := (s.x + s.y) * 32.0
-		var k := clampf(52.0 / maxf(extent, 1.0), 0.3, 0.75)
-		holder.scale = Vector2(k, k)
-		holder.position = Vector2(39, 60 + (s.x + s.y) * 8.0 * k - 8.0 * k)
-		ob.position = Vector2.ZERO
-		holder.add_child(ob)
+		var mb := MeshBuilder.new()
+		var gb := MeshBuilder.new()
 		if Decor.is_decal(kind):
-			holder.add_child(RugPreview.new())
-
-
-class RugPreview extends Node2D:
-	func _draw() -> void:
-		var c := Color("#b5523f")
-		IsoDraw.diamond(self, Iso.to_screen(Vector2(1, 1)), Vector2.ZERO, Vector2(2, 2), c)
-		IsoDraw.diamond(self, Iso.to_screen(Vector2(1, 1)), Vector2(0.3, 0.3), Vector2(1.4, 1.4), c.lightened(0.25))
+			ObjectMeshes.add_decal(spec, mb, [])
+		else:
+			ObjectMeshes.add_object(spec, mb, gb, [])
+		var root := Node3D.new()
+		for pair in [[mb, WorldView.solid_material()], [gb, WorldView.glow_material()]]:
+			if not pair[0].is_empty():
+				var mi := MeshInstance3D.new()
+				mi.mesh = pair[0].commit()
+				mi.material_override = pair[1]
+				root.add_child(mi)
+		var aabb := AABB()
+		for mi in root.get_children():
+			aabb = aabb.merge(mi.get_aabb()) if aabb.size != Vector3.ZERO else mi.get_aabb()
+		var pv := Preview3D.new(root, aabb.get_center(), maxf(maxf(aabb.size.x + aabb.size.z, aabb.size.y * 1.3), 0.6) * 0.95)
+		pv.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+		pv.offset_left = 4
+		pv.offset_top = 4
+		pv.offset_right = -4
+		pv.offset_bottom = -4
+		add_child(pv)

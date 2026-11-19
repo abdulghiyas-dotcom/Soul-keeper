@@ -5,7 +5,8 @@ extends Control
 
 signal done
 
-var _preview: Preview
+var _preview: Preview3D
+var _avatar: Avatar3D
 
 
 func _ready() -> void:
@@ -34,8 +35,22 @@ func _ready() -> void:
 	margin.add_child(box)
 
 	box.add_child(UI.label("AVATAR_TITLE", 34, Color("#5a4660")))
-	_preview = Preview.new()
-	_preview.custom_minimum_size = Vector2(200, 150)
+	var stage := Node3D.new()
+	var base := MeshInstance3D.new()
+	var disc := CylinderMesh.new()
+	disc.top_radius = 0.55
+	disc.bottom_radius = 0.6
+	disc.height = 0.08
+	disc.radial_segments = 32
+	base.mesh = disc
+	base.material_override = Avatar3D.material(Color("#e8d8c4"))
+	base.position.y = -0.04
+	stage.add_child(base)
+	_avatar = Avatar3D.new(GameState.data.avatar)
+	stage.add_child(_avatar)
+	_preview = Preview3D.new(stage, Vector3(0, 0.62, 0), 1.6, 0.6)
+	_preview.custom_minimum_size = Vector2(200, 190)
+	_preview.size_flags_horizontal = SIZE_SHRINK_CENTER
 	box.add_child(_preview)
 
 	var a: Dictionary = GameState.data.avatar
@@ -61,12 +76,5 @@ func _row(box: VBoxContainer, key: String, colors: Array, selected, setter: Call
 	box.add_child(UI.label(key, 20))
 	var row := UI.swatch_row(colors, int(selected), func(i: int) -> void:
 		setter.call(i)
-		_preview.queue_redraw(), allow_none)
+		_avatar.rebuild(), allow_none)
 	box.add_child(row)
-
-
-class Preview extends Control:
-	func _draw() -> void:
-		var c := Vector2(size.x * 0.5, size.y - 14)
-		IsoDraw.ellipse(self, c, 80, 22, Color("#e8d8c4"))
-		Avatar.draw(self, GameState.data.avatar, c, 2.0)

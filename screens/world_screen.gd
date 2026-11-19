@@ -8,8 +8,12 @@ signal hide_requested
 
 const AUTOSAVE_SECONDS := 8.0
 
-var map: IsoMap
+var map: MapGrid
+var view: WorldView
 var player: Player
+var cam: Camera3D
+var _cam_target := Vector3.ZERO
+var _zoom := 1.0
 var location := "exterior"
 var _hud: CanvasLayer
 var _hud_root: Control
@@ -24,7 +28,7 @@ var _decorate_btn: Button
 
 # Decorate mode
 var _editing := false
-var _edit_cam: Camera2D
+var _edit_target := Vector3.ZERO
 var _decor_panel: DecorPanel
 var _pick_kind := ""
 var _selected := -1
@@ -35,6 +39,11 @@ var _autosave_t := 0.0
 
 
 func _ready() -> void:
+	cam = Camera3D.new()
+	cam.near = 0.5  # better depth precision (no flickering surfaces far away)
+	cam.far = 120.0
+	add_child(cam)
+	cam.make_current()
 	_build_hud()
 	var loc: Dictionary = GameState.data.location
 	var spawn := Vector2(loc.x, loc.y)
@@ -45,6 +54,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_camera(delta)
 	_autosave_t += delta
 	if _autosave_t >= AUTOSAVE_SECONDS:
 		_autosave_t = 0.0
@@ -57,38 +67,35 @@ func _load_location(id: String, spawn: Vector2) -> void:
 	if id == "career" and str(GameState.data.career) == "":
 		id = "exterior"
 		spawn = Vector2(-1, -1)
-	if map:
-		map.queue_free()
+	var old_yaw := player.avatar.rotation.y if player and player.avatar else PI * 0.25  # facing us
+	if view:
+		view.queue_free()
 	location = id
 	var d := WorldData.build(id, GameState.data)
-	RenderingServer.set_default_clear_color(d.sky)
-	map = IsoMap.new()
-	map.build(d)
-	add_child(map)
-	move_child(map, 0)
+	map = MapGrid.new().build(d)
+	view = WorldView.new()
+	view.build(map)
+	add_child(view)
+	move_child(view, 0)
 
 	player = Player.new()
 	player.map = map
 	player.look = GameState.look()
-	map.objects.add_child(player)
+	player.camera = cam
+	view.add_child(player)
 	var at: Vector2 = spawn if spawn.x >= 0.0 and map.is_walkable(spawn) else d.spawn
 	player.place(at)
+	player.face(Vector2(sin(old_yaw), cos(old_yaw)))
 	player.entered_tile.connect(_on_tile)
-
-	var cam := Camera2D.new()
-	cam.position_smoothing_enabled = true
-	cam.position_smoothing_speed = 6.0
-	cam.offset = Vector2(0, -30)
-	player.add_child(cam)
-	cam.make_current()
-	cam.reset_smoothing()
+	if not _editing:
+		_cam_target = player.position
+		_update_camera(0.0, true)
 
 	_place_label.text = WorldData.label_key(id, GameState.data)
 	Sound.set_ambience({"exterior": "birds", "town": "birds", "hills": "stream"}.get(id, ""))
 	_decorate_btn.visible = Decor.editable(id) and not _editing
 	if _editing:
 		player.frozen = true
-		_edit_cam.make_current()
 		_refresh_highlight()
 	_save()
 
@@ -125,20 +132,27 @@ func _unhandled_input(event: InputEvent) -> void:
 		hide_requested.emit()
 		get_viewport().set_input_as_handled()
 		return
+	if event is InputEventMouseButton and event.pressed and _current_overlay == null:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_zoom = clampf(_zoom - 0.08, 0.6, 1.5)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_zoom = clampf(_zoom + 0.08, 0.6, 1.5)
 	if _editing and _current_overlay == null:
 		_edit_input(event)
 		return
 	if _busy or player == null or player.frozen:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		var t := Iso.tile_of(Iso.to_grid(map.get_local_mouse_position()))
-		var target := map.tap_target(t)
+		var gp := view.screen_to_grid(cam, event.position)
+		if gp.x < 0.0:
+			return
+		var target := map.tap_target(Iso.tile_of(gp))
 		if target.x >= 0 and target == Iso.tile_of(player.g) and not map.door_at(target).is_empty():
 			_on_tile(target)  # already standing on this door: use it
 			get_viewport().set_input_as_handled()
 		elif target.x >= 0:
 			player.walk_to(target)
-			_tap_marker(Iso.to_screen(Iso.tile_center(target)))
+			view.tap_marker(Iso.tile_center(target))
 			get_viewport().set_input_as_handled()
 
 
@@ -176,6 +190,11 @@ func _build_hud() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(spacer)
+	bar.add_child(SoundButton.new())
+	var gap0 := Control.new()
+	gap0.custom_minimum_size.x = 8
+	gap0.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_child(gap0)
 	var hide_btn := LeafButton.new()
 	hide_btn.pressed.connect(func() -> void: hide_requested.emit())
 	bar.add_child(hide_btn)
@@ -183,13 +202,15 @@ func _build_hud() -> void:
 	gap.custom_minimum_size.x = 8
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(gap)
-	_decorate_btn = UI.button("DECORATE", _enter_edit, 110)
+	_decorate_btn = UI.button("DECORATE", _enter_edit, 96)
+	_decorate_btn.add_theme_font_size_override("font_size", 18)
 	bar.add_child(_decorate_btn)
 	var gap2 := Control.new()
 	gap2.custom_minimum_size.x = 8
 	gap2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bar.add_child(gap2)
-	_menu_btn = UI.button("MENU", _open_menu, 110)
+	_menu_btn = UI.button("MENU", _open_menu, 86)
+	_menu_btn.add_theme_font_size_override("font_size", 18)
 	bar.add_child(_menu_btn)
 
 	_toast = UI.label("", 20)
@@ -235,10 +256,21 @@ func _show_toast(key: String, seconds := 2.0) -> void:
 	tw.tween_property(_toast, "modulate:a", 0.0, 0.6)
 
 
-func _tap_marker(at: Vector2) -> void:
-	var m := TapMarker.new()
-	m.position = at
-	map.add_child(m)
+## Follows the avatar (or the decorating view) from a fixed, gentle angle.
+func _update_camera(delta: float, snap := false) -> void:
+	if not cam or not player:
+		return
+	var target := _edit_target if _editing else player.position
+	_cam_target = target if snap else _cam_target.lerp(target, 1.0 - exp(-6.0 * delta))
+	var outdoor: bool = map.data.get("outdoor", true)
+	var vp := get_viewport().get_visible_rect().size
+	var portrait := vp.x < vp.y
+	cam.keep_aspect = Camera3D.KEEP_WIDTH if portrait else Camera3D.KEEP_HEIGHT
+	cam.fov = 52.0 if portrait else 36.0
+	var dist := (13.5 if outdoor else 10.5) * _zoom
+	var look := _cam_target + Vector3(0, 0.5, 0)
+	cam.position = look + Vector3(1, 1.15, 1).normalized() * dist
+	cam.look_at(look, Vector3.UP)
 
 
 func _overlay() -> Control:
@@ -275,7 +307,6 @@ func _open_menu() -> void:
 	box.add_child(UI.button("PRIVACY", func() -> void:
 		_close_overlay()
 		_open_privacy()))
-	box.add_child(SoundToggle.new())
 	var langs := HBoxContainer.new()
 	langs.alignment = BoxContainer.ALIGNMENT_CENTER
 	langs.add_theme_constant_override("separation", 8)
@@ -376,10 +407,7 @@ func _enter_edit() -> void:
 	player.path.clear()
 	_decorate_btn.visible = false
 	_menu_btn.visible = false
-	_edit_cam = Camera2D.new()
-	_edit_cam.position = player.position + Vector2(0, 40)  # a little lower: the tray covers the bottom
-	add_child(_edit_cam)
-	_edit_cam.make_current()
+	_edit_target = player.position + Vector3(0.8, 0, 0.8)  # a little lower: the tray covers the bottom
 	_decor_panel = DecorPanel.new()
 	_hud_root.add_child(_decor_panel)
 	_decor_panel.kind_picked.connect(func(k: String) -> void:
@@ -400,12 +428,10 @@ func _enter_edit() -> void:
 func _exit_edit() -> void:
 	_editing = false
 	_decor_panel.queue_free()
-	_edit_cam.queue_free()
 	_menu_btn.visible = true
 	_decorate_btn.visible = true
-	map.set_highlight([])
+	view.set_highlight([])
 	player.frozen = false
-	player.get_child(0).make_current()
 	_save()
 
 
@@ -426,9 +452,9 @@ func _deselect() -> void:
 
 func _refresh_highlight() -> void:
 	if _selected >= 0:
-		map.set_highlight(map.user_tiles(_selected), Color("#fff6c8"))
+		view.set_highlight(map.user_tiles(_selected), Color("#fff6c8"))
 	else:
-		map.set_highlight([])
+		view.set_highlight([])
 
 
 func _edit_input(event: InputEvent) -> void:
@@ -437,16 +463,27 @@ func _edit_input(event: InputEvent) -> void:
 			_press_pos = event.position
 			_drag_dist = 0.0
 		elif _drag_dist < 12.0:
-			_edit_tap(Iso.tile_of(Iso.to_grid(map.get_local_mouse_position())))
+			var gp := view.screen_to_grid(cam, event.position, not _pick_kind_or_moving())
+			if gp.x >= 0.0:
+				_edit_tap(Iso.tile_of(gp))
 		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
 		_drag_dist += event.relative.length()
 		if _drag_dist >= 12.0:
-			_edit_cam.position -= event.relative / _edit_cam.zoom
-			var lo := Iso.to_screen(Vector2(0, map.size.y))
-			var hi := Iso.to_screen(Vector2(map.size.x, 0))
-			_edit_cam.position = _edit_cam.position.clamp(Vector2(lo.x, -60), Vector2(hi.x, Iso.to_screen(Vector2(map.size)).y))
+			# Drag the ground: the point under the finger stays under the finger.
+			var a := view.screen_to_grid(cam, event.position - event.relative, false)
+			var b := view.screen_to_grid(cam, event.position, false)
+			if a.x > -1.0 and b.x > -1.0:
+				_edit_target -= Vector3(b.x - a.x, 0, b.y - a.y)
+				_edit_target = _edit_target.clamp(Vector3.ZERO, Vector3(map.size.x, 0, map.size.y))
+				_cam_target = _edit_target
+				_update_camera(0.0, true)
 		get_viewport().set_input_as_handled()
+
+
+## When placing or moving, taps mean "this spot on the ground"; otherwise they select things.
+func _pick_kind_or_moving() -> bool:
+	return _pick_kind != "" or _moving
 
 
 func _edit_tap(tile: Vector2i) -> void:
@@ -521,18 +558,3 @@ func _can_place(kind: String, tile: Vector2i, ignore: int) -> String:
 	if not map.keeps_paths_open(extra, freed, here):
 		return "BLOCKS_PATH"
 	return ""
-
-
-class TapMarker extends Node2D:
-	var t := 0.0
-
-	func _process(delta: float) -> void:
-		t += delta
-		queue_redraw()
-		if t > 0.5:
-			queue_free()
-
-	func _draw() -> void:
-		var k := t / 0.5
-		var r := 8.0 + 14.0 * k
-		draw_arc(Vector2.ZERO, r, 0, TAU, 32, Color(1, 1, 1, 0.8 * (1.0 - k)), 2.0)

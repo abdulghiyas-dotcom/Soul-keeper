@@ -10,22 +10,59 @@ var _box: VBoxContainer
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	RenderingServer.set_default_clear_color(Color("#f3dccb"))
 	Sound.set_ambience("")
-	var bg := Backdrop.new()
-	bg.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	add_child(bg)
+	_build_backdrop()
 	_build()
+	var snd := SoundButton.new()
+	snd.set_anchors_and_offsets_preset(PRESET_TOP_RIGHT)
+	snd.offset_left = -68
+	snd.offset_top = 16
+	snd.offset_right = -16
+	add_child(snd)
+
+
+var _orbit: Node3D
+var _t := 0.0
+
+
+## Her garden (or a fresh one), slowly turning behind the menu.
+func _build_backdrop() -> void:
+	var state: Dictionary = GameState.data if GameState.has_world() else GameState.default_data()
+	var view := WorldView.new()
+	view.build(MapGrid.new().build(WorldData.build("exterior", state)))
+	add_child(view)
+	_orbit = Node3D.new()
+	_orbit.position = Vector3(9, 0, 8)
+	view.add_child(_orbit)
+	var cam := Camera3D.new()
+	cam.fov = 40
+	cam.near = 0.5
+	cam.far = 120.0
+	_orbit.add_child(cam)
+	cam.position = Vector3(0, 13, 17)
+	cam.look_at(_orbit.position + Vector3(0, -1.5, 0), Vector3.UP)
+	cam.make_current()
+
+
+func _process(delta: float) -> void:
+	if _orbit:
+		_t += delta
+		_orbit.rotation.y = 0.6 + sin(_t * 0.08) * 0.5
+		var vp := get_viewport().get_visible_rect().size
+		(_orbit.get_child(0) as Camera3D).keep_aspect = Camera3D.KEEP_WIDTH if vp.x < vp.y else Camera3D.KEEP_HEIGHT
 
 
 func _build() -> void:
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
 	add_child(center)
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UI.sb(Color(1, 0.98, 0.95, 0.82), 28, Color(1, 1, 1, 0.6), 2, 26))
+	center.add_child(card)
 	_box = VBoxContainer.new()
-	_box.custom_minimum_size.x = 360
+	_box.custom_minimum_size.x = 340
 	_box.add_theme_constant_override("separation", 14)
-	center.add_child(_box)
+	card.add_child(_box)
 
 	_box.add_child(UI.label("APP_TITLE", 52, Color("#5a4660")))
 	_box.add_child(UI.label("TAGLINE", 22, Color("#7a6676")))
@@ -56,10 +93,6 @@ func _build() -> void:
 				GameState.save())
 		langs.add_child(b)
 	_box.add_child(langs)
-	var snd := SoundToggle.new(180)
-	snd.custom_minimum_size.y = 46
-	snd.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_box.add_child(snd)
 
 
 func _confirm_start_over() -> void:
@@ -77,21 +110,3 @@ func _confirm_start_over() -> void:
 		GameState.reset()
 		new_pressed.emit(), 140))
 	box.add_child(row)
-
-
-## Soft dawn sky with hills — placeholder art.
-class Backdrop extends Control:
-	func _draw() -> void:
-		var s := size
-		var top := Color("#f6d9c8")
-		var bottom := Color("#d9dbef")
-		draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(s.x, 0), s, Vector2(0, s.y)]),
-			PackedColorArray([top, top, bottom, bottom]))
-		draw_circle(Vector2(s.x * 0.82, s.y * 0.12), 52, Color(1, 0.93, 0.75, 0.6), true, -1.0, true)
-		draw_circle(Vector2(s.x * 0.82, s.y * 0.12), 32, Color("#fde7b0"), true, -1.0, true)
-		IsoDraw.ellipse(self, Vector2(s.x * 0.2, s.y * 1.02), s.x * 0.55, s.y * 0.28, Color("#b9d3b2"), 48)
-		IsoDraw.ellipse(self, Vector2(s.x * 0.85, s.y * 1.06), s.x * 0.6, s.y * 0.26, Color("#a7c9a0"), 48)
-
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED:
-			queue_redraw()

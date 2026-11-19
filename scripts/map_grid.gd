@@ -1,41 +1,46 @@
-class_name IsoMap
-extends Node2D
-## A location built from a WorldData dictionary: ground layer, y-sorted
-## objects, a walkability grid and A* pathfinding for tap-to-walk.
+class_name MapGrid
+extends RefCounted
+## The rules of a location, separate from how it is drawn: which tiles can be
+## walked on, where the doors are, pathfinding for tap-to-walk, and which tiles
+## hold things she placed. Grid (x, y) maps to 3D (x, 0, y), one unit per tile.
 
 var data: Dictionary
 var size: Vector2i
-var objects: Node2D
 var solid := {}       # Vector2i -> true
 var door_of := {}     # solid tile -> door tile (tapping a house walks to its door)
 var user_at := {}     # tile -> index of the item she placed there (see Decor)
 var keep_clear := {}  # tiles where she arrives; never decorated over
 var astar := AStarGrid2D.new()
-var _highlight: Highlight
 
 
-func build(d: Dictionary) -> void:
+static func size_of(spec: Dictionary) -> Vector2:
+	return spec.get("size", Decor.size_of(str(spec.kind)))
+
+
+static func footprint_of(spec: Dictionary) -> Array[Vector2i]:
+	var p: Vector2 = spec.pos
+	var s := size_of(spec)
+	var tiles: Array[Vector2i] = []
+	for x in range(floori(p.x), ceili(p.x + s.x)):
+		for y in range(floori(p.y), ceili(p.y + s.y)):
+			tiles.append(Vector2i(x, y))
+	return tiles
+
+
+func build(d: Dictionary) -> MapGrid:
 	data = d
 	size = d.size
-	var ground := IsoGround.new()
-	ground.map = self
-	add_child(ground)
-	objects = Node2D.new()
-	objects.y_sort_enabled = true
-	add_child(objects)
-
 	for dec in d.get("decals", []):
 		if dec.has("user"):
-			for t in Decor.footprint(Iso.tile_of(dec.pos), dec.kind):
+			for t in footprint_of(dec):
 				user_at[t] = dec.user
 	for s in d.get("objects", []):
-		var ob := IsoObject.new().setup(s)
-		objects.add_child(ob)
+		var tiles := footprint_of(s)
 		if s.has("user"):
-			for t in ob.footprint():
+			for t in tiles:
 				user_at[t] = s.user
 		if s.get("solid", true):
-			for t in ob.footprint():
+			for t in tiles:
 				solid[t] = true
 				if s.has("door"):
 					door_of[t] = s.door
@@ -43,12 +48,8 @@ func build(d: Dictionary) -> void:
 		solid[t] = true
 		if d.has("blocked_door"):
 			door_of[t] = d.blocked_door
-
 	for g in d.get("keep_clear", []):
 		keep_clear[Iso.tile_of(g)] = true
-	_highlight = Highlight.new()
-	_highlight.z_index = 10
-	add_child(_highlight)
 
 	astar.region = Rect2i(Vector2i.ZERO, size)
 	astar.cell_size = Vector2.ONE
@@ -62,6 +63,7 @@ func build(d: Dictionary) -> void:
 	for t in d.get("doors", {}):
 		if astar.is_in_boundsv(t):
 			astar.set_point_solid(t, true)
+	return self
 
 
 func in_bounds(t: Vector2i) -> bool:
@@ -95,7 +97,6 @@ func find_path(from: Vector2, to: Vector2i) -> PackedVector2Array:
 		return PackedVector2Array()
 	if start == to:
 		return PackedVector2Array([Iso.tile_center(to)])
-	# Standing on a door (e.g. just arrived): let A* start from it.
 	var start_door := not door_at(start).is_empty()
 	if start_door:
 		astar.set_point_solid(start, false)
@@ -143,22 +144,3 @@ func keeps_paths_open(extra: Dictionary, freed: Dictionary, from: Vector2i) -> b
 		if not seen.has(t):
 			return false
 	return true
-
-
-func set_highlight(tiles: Array, color := Color(1, 1, 1, 0.9)) -> void:
-	_highlight.tiles = tiles
-	_highlight.color = color
-	_highlight.queue_redraw()
-
-
-class Highlight extends Node2D:
-	var tiles: Array = []
-	var color := Color.WHITE
-
-	func _draw() -> void:
-		for t in tiles:
-			var p := PackedVector2Array([Iso.to_screen(Vector2(t)), Iso.to_screen(Vector2(t) + Vector2(1, 0)),
-				Iso.to_screen(Vector2(t) + Vector2(1, 1)), Iso.to_screen(Vector2(t) + Vector2(0, 1))])
-			draw_colored_polygon(p, Color(color, 0.25))
-			p.append(p[0])
-			draw_polyline(p, color, 2.0, true)
